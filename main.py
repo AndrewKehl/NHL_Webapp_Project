@@ -21,7 +21,7 @@ app.layout = html.Div([
                 {'x': df[df['species'] == 'virginica']['sepal_width'], 'y': df[df['species'] == 'virginica']['sepal_length'], 'type': 'scatter', 'mode': 'markers', 'name': 'Virginica'}
             ],
             'layout': {
-                'title': 'NHL stuff continuously deployed',
+                'title': 'NHL stufffffffffffffffffffffffff',
                 'xaxis': {'title': 'Sepal Width'},
                 'yaxis': {'title': 'Sepal Length'}
             }
