@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r /requirements.txt
 # Copy the app code
 WORKDIR /app
 COPY main.py /app
+COPY templates /app/templates
 
 # Expose port 8050
 EXPOSE 8050
