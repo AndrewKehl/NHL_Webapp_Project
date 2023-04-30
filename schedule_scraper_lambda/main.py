@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 
-default_start_date = datetime.now() - timedelta(days=-2000)
+default_start_date = datetime.now() - timedelta(days=-1000)
 default_end_date = datetime.now()
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ['DYNAMODB_TABLE_NAME']
@@ -25,7 +25,23 @@ def lambda_handler(event, context):
             if (game["gameType"]) == 'A' or (game["gameType"]) == 'PR':
                 pass
             else:
-                items = {'Game_ID': str(game["gamePk"]), 'game_type': (game["gameType"]), 'season': (game["season"]),
+                try:
+                    home_goals = (game["teams"]['home']['score'])
+                except KeyError:
+                    home_goals = 0
+
+                try:
+                    away_goals = (game["teams"]['away']['score'])
+                except KeyError:
+                    away_goals = 0
+
+                if home_goals > away_goals:
+                    home_winner_bool = 1
+                else:
+                    home_winner_bool = 0
+
+                items = {'Game_ID': (game["gamePk"]),'Home_Win_Bool':home_winner_bool, 'game_type': (game["gameType"]),
+                         'season': (game["season"]),
                          'away': (game["teams"]['away']['team']['id']), 'home': (game["teams"]['home']['team']['id'])}
                 table.put_item(Item=items)
 
