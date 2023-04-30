@@ -40,7 +40,7 @@ def lambda_handler(event, context):
                 else:
                     home_winner_bool = 0
 
-                items = {'Game_ID': (game["gamePk"]),'Home_Win_Bool':home_winner_bool, 'game_type': (game["gameType"]),
+                items = {'Game_ID': int(game["gamePk"]),'Home_Win_Bool':home_winner_bool, 'game_type': (game["gameType"]),
                          'season': (game["season"]),
                          'away': (game["teams"]['away']['team']['id']), 'home': (game["teams"]['home']['team']['id'])}
                 table.put_item(Item=items)
