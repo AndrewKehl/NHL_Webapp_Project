@@ -22,12 +22,12 @@ jobs:
           python-version: '3.10'
 
       - name: install dependencies
-        working-directory: ./schedule-scraper-lambda
+        working-directory: ./schedule_scraper_lambda
         run: |
           pip install -r requirements.txt --target .
       - name: zip up directory
         run: |
-          cd schedule-scraper-lambda && zip -qq -r ../schedule-scraper-lambda.zip ./*
+          cd schedule_scraper_lambda && zip -qq -r ../schedule_scraper_lambda.zip ./*
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
@@ -35,5 +35,5 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION }}
           function_name:  ${{ env.LAMBDA_FUNCTION_NAME }}
-          zip_file: ./schedule-scraper-lambda.zip
+          zip_file: ./schedule_scraper_lambda.zip
           handler: main.lambda_handler
