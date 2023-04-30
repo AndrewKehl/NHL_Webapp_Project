@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 
 default_start_date = datetime.now() - timedelta(days=-2000)
-default_end_date = datetime.now()- timedelta(days=-1000)
+default_end_date = datetime.now()- timedelta(days=-1001)
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ['DYNAMODB_TABLE_NAME']
 start_date = os.getenv('START_DATE', default_start_date.strftime('%Y-%m-%d'))
