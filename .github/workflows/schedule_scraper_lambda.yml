@@ -1,0 +1,39 @@
+name: Schedule Scraper
+
+on:
+  push:
+    tags:
+      - '*'
+env:
+  LAMBDA_FUNCTION_NAME: Schedule_Scraper
+  AWS_REGION: us-east-2
+
+jobs:
+
+  deploy_source:
+    name: deploy lambda from source
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout source code
+        uses: actions/checkout@v1
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: install dependencies
+        working-directory: ./schedule-scraper-lambda
+        run: |
+          pip install -r requirements.txt --target .
+      - name: zip up directory
+        run: |
+          cd schedule-scraper-lambda && zip -qq -r ../schedule-scraper-lambda.zip ./*
+      - name: default deploy
+        uses: appleboy/lambda-action@master
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}
+          function_name:  ${{ env.LAMBDA_FUNCTION_NAME }}
+          zip_file: ./schedule-scraper-lambda.zip
+          handler: main.lambda_handler
