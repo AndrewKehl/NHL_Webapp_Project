@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 
-default_start_date = datetime.now() - timedelta(days=1200)
+default_start_date = datetime.now()
 default_end_date = datetime.now() + timedelta(days=7)
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ['DYNAMODB_TABLE_NAME']
