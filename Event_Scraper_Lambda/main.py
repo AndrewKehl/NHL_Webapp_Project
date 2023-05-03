@@ -27,9 +27,14 @@ def get_game_data(game_id, retries=3):
                 raise
 
 def insert_items_to_dynamodb(items, table_name):
-    out_table = dynamodb.Table(table_name)
+    # Add this line to print the total size of items in bytes
+    print(f"Total size of items being inserted: {sys.getsizeof(json.dumps(items))} bytes")
+
     with out_table.batch_writer() as batch:
         for item in items:
+            # Add this line to print each item being inserted
+            print(f"Inserting item: {item}")
+
             batch.put_item(Item=item)
 
 def lambda_handler(event, context):
