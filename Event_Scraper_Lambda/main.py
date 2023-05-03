@@ -39,7 +39,7 @@ def lambda_handler(event, context):
         game_data = get_game_data(game_id)
 
         for record in game_data['liveData']['plays']['allPlays']:
-            uid = f"{game_id}_{record['eventID']}"
+            uid = f"{game_id}_{record['about']['eventIdx']}"
             record.update(item)
             record['UID'] = uid
             extended_items.append(record)
