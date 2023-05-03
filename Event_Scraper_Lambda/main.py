@@ -16,8 +16,8 @@ def get_game_data(game_id):
     return response.json()
 
 def insert_items_to_dynamodb(items, table_name):
-    table = dynamodb.Table(table_name)
-    with table.batch_writer() as batch:
+    out_table = dynamodb.Table(table_name)
+    with out_table.batch_writer() as batch:
         for item in items:
             batch.put_item(Item=item)
 
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
 
     # Keep scanning if there are more items to retrieve
     while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        response = in_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
         items.extend(response['Items'])
 
     # Retrieve and append NHL API data to each DynamoDB item
