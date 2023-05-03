@@ -34,7 +34,8 @@ def lambda_handler(event, context):
 
     # Retrieve and append NHL API data to each DynamoDB item
     extended_items = []
-    for item in items:
+
+    for item in items[0:250]:
         game_id = item['Game_ID']
         game_data = get_game_data(game_id)
 
@@ -45,7 +46,7 @@ def lambda_handler(event, context):
             extended_items.append(record)
 
     # Insert the extended items into the 'nhl_events' DynamoDB table
-        insert_items_to_dynamodb(extended_items, out_table)
+    insert_items_to_dynamodb(extended_items, out_table)
 
     # Print a confirmation message
     print(f"Inserted {len(extended_items)} items into the 'nhl_events' table.")
