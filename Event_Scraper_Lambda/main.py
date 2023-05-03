@@ -29,7 +29,7 @@ def get_game_data(game_id, retries=3):
 
 def insert_items_to_dynamodb(items, table_name):
     # Add this line to print the total size of items in bytes
-    print(f"Total size of items being inserted: {sys.getsizeof(json.dumps(items))} bytes")
+    print(f"Total size of items being inserted: {sys.getsizeof(items)} bytes")
 
     with out_table.batch_writer() as batch:
         for item in items:
