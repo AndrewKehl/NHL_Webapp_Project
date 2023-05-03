@@ -4,6 +4,7 @@ import requests
 import os
 import time
 import sys
+from decimal import Decimal
 
 dynamodb = boto3.resource('dynamodb')
 in_table_name = os.environ['IN_DYNAMODB_TABLE_NAME']
@@ -11,6 +12,15 @@ out_table_name = os.environ['OUT_DYNAMODB_TABLE_NAME']
 in_table = dynamodb.Table(in_table_name)
 out_table = dynamodb.Table(out_table_name)
 
+def float_to_decimal(data):
+    if isinstance(data, list):
+        return [float_to_decimal(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: float_to_decimal(value) for key, value in data.items()}
+    elif isinstance(data, float):
+        return Decimal(str(data))
+    else:
+        return data
 
 def get_game_data(game_id, retries=3):
     url = f"https://statsapi.web.nhl.com/api/v1/game/{game_id}/feed/live"
@@ -60,6 +70,7 @@ def lambda_handler(event, context):
             uid = f"{game_id}_{record['about']['eventIdx']}"
             record.update(item)
             record['UID'] = uid
+            record = float_to_decimal(record)  # Add this line to convert float values to Decimal types
             extended_items.append(record)
 
     # Insert the extended items into the 'nhl_events' DynamoDB table
