@@ -2,6 +2,7 @@ import json
 import boto3
 import requests
 import os
+import time
 
 dynamodb = boto3.resource('dynamodb')
 in_table_name = os.environ['IN_DYNAMODB_TABLE_NAME']
@@ -10,10 +11,20 @@ in_table = dynamodb.Table(in_table_name)
 out_table = dynamodb.Table(out_table_name)
 
 
-def get_game_data(game_id):
+def get_game_data(game_id, retries=3):
     url = f"https://statsapi.web.nhl.com/api/v1/game/{game_id}/feed/live"
-    response = requests.get(url)
-    return response.json()
+
+    for i in range(retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error while fetching game data for Game_ID {game_id}: {e}")
+            if i < retries - 1:
+                time.sleep(2 ** i)  # Exponential backoff
+            else:
+                raise
 
 def insert_items_to_dynamodb(items, table_name):
     out_table = dynamodb.Table(table_name)
