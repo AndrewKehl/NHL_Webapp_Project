@@ -3,6 +3,7 @@ import boto3
 import requests
 import os
 import time
+import sys
 
 dynamodb = boto3.resource('dynamodb')
 in_table_name = os.environ['IN_DYNAMODB_TABLE_NAME']
