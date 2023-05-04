@@ -62,7 +62,7 @@ def lambda_handler(event, context):
     # Retrieve and append NHL API data to each DynamoDB item
     extended_items = []
 
-    for item in items[750:2000]:
+    for item in items[2000:4000]:
         game_id = item['Game_ID']
         game_data = get_game_data(game_id)
 
