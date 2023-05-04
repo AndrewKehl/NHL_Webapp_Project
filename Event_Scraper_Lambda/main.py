@@ -39,12 +39,12 @@ def get_game_data(game_id, retries=3):
 
 def insert_items_to_dynamodb(items, table_name):
     # Add this line to print the total size of items in bytes
-    print(f"Total size of items being inserted: {sys.getsizeof(items)} bytes")
+    #print(f"Total size of items being inserted: {sys.getsizeof(items)} bytes")
 
     with out_table.batch_writer() as batch:
         for item in items:
             # Add this line to print each item being inserted
-            print(f"Inserting item: {item}")
+            #print(f"Inserting item: {item}")
 
             batch.put_item(Item=item)
 
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
     # Retrieve and append NHL API data to each DynamoDB item
     extended_items = []
 
-    for item in items[250:750]:
+    for item in items[750:2000]:
         game_id = item['Game_ID']
         game_data = get_game_data(game_id)
 
