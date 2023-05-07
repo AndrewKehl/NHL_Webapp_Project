@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pickle
 import os
 import boto3
+import sklearn
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 import sklearn
