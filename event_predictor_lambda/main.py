@@ -14,6 +14,20 @@ start_date = os.getenv('START_DATE', default_start_date.strftime('%Y-%m-%d'))
 end_date = os.getenv('END_DATE', default_end_date.strftime('%Y-%m-%d'))
 table = dynamodb.Table(table_name)
 
+def time_string_to_minutes(time_string):
+    try:
+        time_string=str(time_string)
+        minutes, seconds = map(int, time_string.split(':'))
+    except:
+        minutes=0
+        seconds=0
+
+    return minutes * 60 + seconds
+
+
+
+
+
 
 def lambda_handler(event, context):
     events_map_df = pd.DataFrame(
@@ -66,32 +80,20 @@ def lambda_handler(event, context):
                                     'Home_blocked_shots', 'Away_blocked_shots', 'Home_hits', 'Away_hits',
                                     'Home_takeaway', 'Away_takeaway', 'Home_giveaway', 'Away_giveaway',
                                     'Home_penalty_minutes', 'Away_penalty_minutes', 'time_left_in_period'])
-    p = []
+
     games_url = "https://statsapi.web.nhl.com/api/v1/schedule?startDate={}&endDate={}".format(start_date, end_date)
 
     schedule_response = requests.get(games_url)
     schedule_data = schedule_response.json()
-    count = 0
     for date in schedule_data["dates"]:
 
         for game in date["games"]:
-
-            try:
-                home_goals = (game["teams"]['home']['score'])
-            except KeyError:
-                home_goals = 0
-
-            try:
-                away_goals = (game["teams"]['away']['score'])
-            except KeyError:
-                away_goals = 0
 
             items = {'Game_ID': int(game["gamePk"]), 'game_type': (game["gameType"]),
                      'season': (game["season"]),
                      'away': (game["teams"]['away']['team']['id']), 'home': (game["teams"]['home']['team']['id']),
                      'date': (date['date'])}
 
-            # p.append(items)
 
             game_id = (items['Game_ID'])
 
@@ -128,8 +130,7 @@ def lambda_handler(event, context):
                 games_df['Away_giveaway'] = 0
                 games_df['Home_penalty_minutes'] = 0
                 games_df['Away_penalty_minutes'] = 0
-                count += 1
-                print(count)
+
 
                 for index, row in games_df.iterrows():
 
