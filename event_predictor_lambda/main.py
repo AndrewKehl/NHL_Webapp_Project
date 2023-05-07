@@ -1,10 +1,10 @@
-import os
-import pickle
-from datetime import datetime, timedelta
-
-import boto3
-import pandas as pd
 import requests
+import pandas as pd
+from datetime import datetime, timedelta
+import pickle
+import os
+
+
 
 default_start_date = datetime.now() - timedelta(days=1)
 default_end_date = datetime.now() + timedelta(days=7)
