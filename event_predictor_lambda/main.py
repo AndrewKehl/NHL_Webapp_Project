@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pickle
 import os
-
+import boto3
 
 
 default_start_date = datetime.now() - timedelta(days=1)
