@@ -6,6 +6,7 @@ import os
 import boto3
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+import sklearn
 
 
 default_start_date = datetime.now() - timedelta(days=1)
