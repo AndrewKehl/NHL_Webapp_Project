@@ -1,11 +1,11 @@
-name: event_pred
+name: Event_pred
 
 on:
   push:
     tags:
       - '*'
 env:
-  LAMBDA_FUNCTION_NAME: event_pred
+  LAMBDA_FUNCTION_NAME: Event_pred
   AWS_REGION: us-east-2
 
 jobs:
