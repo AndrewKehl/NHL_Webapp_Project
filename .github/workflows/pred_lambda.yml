@@ -1,11 +1,11 @@
-name: Event_pred
+name: event_pred
 
 on:
   push:
     tags:
       - '*'
 env:
-  LAMBDA_FUNCTION_NAME: Event_pred
+  LAMBDA_FUNCTION_NAME: event_pred
   AWS_REGION: us-east-2
 
 jobs:
@@ -24,19 +24,10 @@ jobs:
       - name: install dependencies
         working-directory: ./event_predictor_lambda
         run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
-
+          pip install -r requirements.txt --target .
       - name: zip up directory
         run: |
-          cd event_predictor_lambda
-          source venv/bin/activate
-          cp -r $(python -c "import site; print(site.getsitepackages()[0])")/* .
-          rm -r venv
-          cd ..
-          zip -qq -r event_predictor_lambda.zip event_predictor_lambda
-
+          cd event_predictor_lambda && zip -qq -r ../event_predictor_lambda.zip ./*
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
