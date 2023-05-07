@@ -1,11 +1,4 @@
-# Once every five minutes
-#Poll for games (date, hometeam, awayteam, game id)
-#Use list of game_id to check for events:
-# predict on those events
-#insert predictions into new db table
-#pull data into the flask app
 import boto3
-
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
@@ -18,13 +11,13 @@ from sklearn.preprocessing import StandardScaler
 
 
 
-default_start_date = datetime.now()
+default_start_date = datetime.now() - timedelta(days=1)
 default_end_date = datetime.now() + timedelta(days=7)
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ['DYNAMODB_TABLE_NAME']
 start_date = os.getenv('START_DATE', default_start_date.strftime('%Y-%m-%d'))
 end_date = os.getenv('END_DATE', default_end_date.strftime('%Y-%m-%d'))
-
+table = dynamodb.Table(table_name)
 
 
 def lambda_handler(event, context):
@@ -276,10 +269,8 @@ def lambda_handler(event, context):
     special['prediction'] = predictions
     special.drop(special.iloc[:, 32:98], axis=1,inplace=True)
 
-
-
-
-
-
+    datas = special.to_dict(orient='records')
+    for datum in datas:
+        table.put_item(Item=datum)
 
     print('done')
