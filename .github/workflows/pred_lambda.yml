@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements.txt --target .
       - name: zip up directory
         run: |
-          cd schedule_scraper_lambda && zip -qq -r ../event_predictor_lambda.zip ./*
+          cd event_predictor_lambda && zip -qq -r ../event_predictor_lambda.zip ./*
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
