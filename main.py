@@ -1,21 +1,30 @@
-import dash
-import boto3
 import os
-from flask import Flask, redirect, url_for, session, render_template
 from functools import wraps
+
+import boto3
+import dash
 import plotly.express as px
+from authlib.integrations.flask_client import OAuth
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from authlib.integrations.flask_client import OAuth
-import pandas as pd
-import requests
+from flask import Flask, redirect, url_for, session, render_template
 
 # Load Iris dataset
 df = px.data.iris()
 
 # Connect to DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
-schedulesTable = dynamodb.Table('nhl-schedules')
+prediction_table = dynamodb.Table('predicted_events')
+teams_table = dynamodb.Table('nhl_teams')
+
+
+
+
+
+
+
+
+
 
 # Initialize the server
 server = Flask(__name__)
@@ -30,7 +39,7 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),  # this locates this structure to the url
     html.Div(id='page-content'),
     html.H1('NHL Schedules'),
-    html.Ul(id='schedule-list'),
+    html.Ul(id='predicted_events'),
     html.H1('Iris Dataset'),
     dcc.Graph(
         id='scatter-plot',

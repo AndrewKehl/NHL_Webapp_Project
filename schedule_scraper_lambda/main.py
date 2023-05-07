@@ -1,9 +1,9 @@
 import json
-import boto3
-import requests
 import os
 from datetime import datetime, timedelta
 
+import boto3
+import requests
 
 default_start_date = datetime.now()
 default_end_date = datetime.now() + timedelta(days=7)

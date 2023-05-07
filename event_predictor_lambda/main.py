@@ -1,15 +1,10 @@
-import boto3
-import requests
-import pandas as pd
-from datetime import datetime, timedelta
-import pickle
 import os
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
+import pickle
+from datetime import datetime, timedelta
 
-
-
-
+import boto3
+import pandas as pd
+import requests
 
 default_start_date = datetime.now() - timedelta(days=1)
 default_end_date = datetime.now() + timedelta(days=7)
