@@ -24,10 +24,12 @@ jobs:
       - name: install dependencies
         working-directory: ./event_predictor_lambda
         run: |
-          pip install -r requirements.txt --target .
+          mkdir package
+          pip install -r requirements.txt --target package
       - name: zip up directory
         run: |
-          cd event_predictor_lambda && zip -qq -r ../event_predictor_lambda.zip ./*
+          cp -r event_predictor_lambda/* package/
+          cd package && zip -qq -r ../event_predictor_lambda.zip ./*
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
