@@ -5,7 +5,7 @@ on:
     tags:
       - '*'
 env:
-  LAMBDA_FUNCTION_NAME: Event_pred
+  LAMBDA_FUNCTION_NAME: movement_pred
   AWS_REGION: us-east-2
 
 jobs:
