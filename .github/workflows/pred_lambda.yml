@@ -24,12 +24,19 @@ jobs:
       - name: install dependencies
         working-directory: ./event_predictor_lambda
         run: |
-          mkdir package
-          pip install -r requirements.txt --target package
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
       - name: zip up directory
         run: |
-          cp -r event_predictor_lambda/* package/
-          cd package && zip -qq -r ../event_predictor_lambda.zip ./*
+          cd event_predictor_lambda
+          source venv/bin/activate
+          cp -r $(python -c "import site; print(site.getsitepackages()[0])")/* .
+          rm -r venv
+          cd ..
+          zip -qq -r event_predictor_lambda.zip event_predictor_lambda
+
       - name: default deploy
         uses: appleboy/lambda-action@master
         with:
