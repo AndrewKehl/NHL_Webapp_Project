@@ -3,14 +3,13 @@ from functools import wraps
 
 import boto3
 import dash
-import plotly.express as px
+import dash_bootstrap_components as dbc
+import dash_core_components as dcc
+import dash_html_components as html
+import pandas as pd
 from authlib.integrations.flask_client import OAuth
-from dash import dcc, html
 from dash.dependencies import Input, Output
 from flask import Flask, redirect, url_for, session, render_template
-
-# Load Iris dataset
-df = px.data.iris()
 
 # Connect to DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
@@ -23,53 +22,154 @@ predict_items = predict_response['Items']
 teams_response = teams_table.scan()
 teams_items = teams_response['Items']
 
-
-
-
-
-
+# Convert data to pandas DataFrames
+nhl_teams_df = pd.DataFrame(teams_items)
+predicted_events_df = pd.DataFrame(predict_items)
 
 # Initialize the server
 server = Flask(__name__)
 server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
-# server.config['SERVER_NAME'] = 'localhost:8050'
 
 oauth = OAuth(server)
-app = dash.Dash(__name__, server=server, url_base_pathname='/dash/')
+app = dash.Dash(__name__, server=server, url_base_pathname='/dash/', external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # Define the layout of the app
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),  # this locates this structure to the url
+    dcc.Location(id='url', refresh=False),
     html.Div(id='page-content'),
     html.H1('NHL Schedules'),
-    html.Ul(id='predicted_events'),
-    html.H1('Iris Dataset'),
-    dcc.Graph(
-        id='scatter-plot',
-        figure={
-            'data': [
-                {'x': df[df['species'] == 'setosa']['sepal_width'], 'y': df[df['species'] == 'setosa']['sepal_length'],
-                 'type': 'scatter', 'mode': 'markers', 'name': 'Setosa'},
-                {'x': df[df['species'] == 'versicolor']['sepal_width'],
-                 'y': df[df['species'] == 'versicolor']['sepal_length'], 'type': 'scatter', 'mode': 'markers',
-                 'name': 'Versicolor'},
-                {'x': df[df['species'] == 'virginica']['sepal_width'],
-                 'y': df[df['species'] == 'virginica']['sepal_length'], 'type': 'scatter', 'mode': 'markers',
-                 'name': 'Virginica'}
-            ],
-            'layout': {
-                'title': 'NHL stuff continuously deployed',
-                'xaxis': {'title': 'Sepal Width'},
-                'yaxis': {'title': 'Sepal Length'}
-            }
-        }
-    ),
+    html.Div([
+        html.Label('Sort by date:'),
+        dcc.Dropdown(
+            id='date-dropdown',
+            options=[{'label': date, 'value': date} for date in predicted_events_df['date'].unique()],
+            multi=True
+        ),
+        html.Label('Sort by game:'),
+        dcc.Dropdown(
+            id='game-dropdown',
+            options=[{'label': game_id, 'value': game_id} for game_id in predicted_events_df['Game_ID'].unique()],
+            multi=True
+        ),
+        html.Br(),
+        html.Div(id='table-container')
+    ]),
     dcc.Interval(
         id='interval-component',
-        interval=1 * 1000,  # in milliseconds
+        interval=1 * 1000,
         n_intervals=0
     )
 ])
+
+# Callback to update table
+@app.callback(
+    Output('table-container', 'children'),
+    [Input('date-dropdown', 'value'),
+     Input('game-dropdown', 'value')]
+)
+def update_table(date_filter, game_filter):
+    filtered_df = predicted_events_df
+
+    if date_filter:
+        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
+
+    if game_filter:
+        filtered_df = filtered_df[filtered_df['Game_ID'].isin(game_filter)]
+
+    filtered_df = filtered_df.sort_values(by='eventIdx', ascending=False)
+
+    filtered_df['away'] = filtered_df['away'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+    filtered_df['home'] = filtered_df['home'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+
+    return dbc.Table.from_dataframe(filtered_df, striped=True, bordered=True, hover=True)
+
+# Rest of the code remains the same...
+
+if __name__ == '__main__':
+    app.run_server(host='0.0.0.0', debug=True)import os
+from functools import wraps
+
+import boto3
+import dash
+import dash_bootstrap_components as dbc
+import dash_core_components as dcc
+import dash_html_components as html
+import pandas as pd
+from authlib.integrations.flask_client import OAuth
+from dash.dependencies import Input, Output
+from flask import Flask, redirect, url_for, session, render_template
+
+# Connect to DynamoDB
+dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
+prediction_table = dynamodb.Table('predicted_events')
+teams_table = dynamodb.Table('nhl_teams')
+
+predict_response = prediction_table.scan()
+predict_items = predict_response['Items']
+
+teams_response = teams_table.scan()
+teams_items = teams_response['Items']
+
+# Convert data to pandas DataFrames
+nhl_teams_df = pd.DataFrame(teams_items)
+predicted_events_df = pd.DataFrame(predict_items)
+
+# Initialize the server
+server = Flask(__name__)
+server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
+
+oauth = OAuth(server)
+app = dash.Dash(__name__, server=server, url_base_pathname='/dash/', external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+# Define the layout of the app
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content'),
+    html.H1('NHL Schedules'),
+    html.Div([
+        html.Label('Sort by date:'),
+        dcc.Dropdown(
+            id='date-dropdown',
+            options=[{'label': date, 'value': date} for date in predicted_events_df['date'].unique()],
+            multi=True
+        ),
+        html.Label('Sort by game:'),
+        dcc.Dropdown(
+            id='game-dropdown',
+            options=[{'label': game_id, 'value': game_id} for game_id in predicted_events_df['Game_ID'].unique()],
+            multi=True
+        ),
+        html.Br(),
+        html.Div(id='table-container')
+    ]),
+    dcc.Interval(
+        id='interval-component',
+        interval=1 * 1000,
+        n_intervals=0
+    )
+])
+
+# Callback to update table
+@app.callback(
+    Output('table-container', 'children'),
+    [Input('date-dropdown', 'value'),
+     Input('game-dropdown', 'value')]
+)
+def update_table(date_filter, game_filter):
+    filtered_df = predicted_events_df
+
+    if date_filter:
+        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
+
+    if game_filter:
+        filtered_df = filtered_df[filtered_df['Game_ID'].isin(game_filter)]
+
+    filtered_df = filtered_df.sort_values(by='eventIdx', ascending=False)
+
+    filtered_df['away'] = filtered_df['away'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+    filtered_df['home'] = filtered_df['home'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+
+    return dbc.Table.from_dataframe(filtered_df, striped=True, bordered=True, hover=True)
 
 
 def login_required(f):
@@ -154,6 +254,9 @@ def display_dash(pathname):
     user = dict(session).get('user', None)
     if user is None:
         return (dcc.Location(id="redirect", pathname="/"))
+
+if __name__ == '__main__':
+    app.run_server(host='0.0.0.0', debug=True)
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', debug=True)
