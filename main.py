@@ -133,10 +133,10 @@ def logout():
 @app.callback(Output('predicted_events', 'children'),
               Input('interval-component', 'n_intervals'))
 def update_schedule(n):
-    global schedulesTable
+    global predicted_events
 
     # Retrieve all items from DynamoDB table
-    response = schedulesTable.scan()
+    response = predicted_events.scan()
     items = response.get('Items')
 
     # Create list of items
