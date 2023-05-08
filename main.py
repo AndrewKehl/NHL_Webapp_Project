@@ -54,6 +54,7 @@ app.layout = html.Div([
     ]),
 ])
 
+
 # Callback to update table
 @app.callback(
     Output('table-container', 'children'),
@@ -74,6 +75,9 @@ def update_table(date_filter, game_filter):
     filtered_df['away'] = filtered_df['away'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
     filtered_df['home'] = filtered_df['home'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
 
+    # Select only the desired columns
+    filtered_df = filtered_df[['home_goals', 'away_goals', 'home', 'away', 'description']]
+
     return html.Table([
         html.Thead([
             html.Tr([html.Th(col) for col in filtered_df.columns])
@@ -84,6 +88,8 @@ def update_table(date_filter, game_filter):
             ]) for i in range(len(filtered_df))
         ])
     ])
+
+# Rest of the code remains the same...
 
 
 def login_required(f):
