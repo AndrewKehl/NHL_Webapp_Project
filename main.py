@@ -3,6 +3,7 @@ import pandas as pd
 import boto3
 from functools import wraps
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -23,6 +24,16 @@ teams_items = teams_response['Items']
 predicted_events_df = pd.DataFrame(predict_items)
 nhl_teams_df = pd.DataFrame(teams_items)
 
+# Get the highest eventIdx for each game
+max_events_df = predicted_events_df.groupby('Game_ID', as_index=False)['eventIdx'].max()
+
+# Merge the highest eventIdx data with the original dataframe
+merged_df = pd.merge(max_events_df, predicted_events_df, on=['Game_ID', 'eventIdx'], how='left')
+
+# Replace team IDs with team abbreviations
+merged_df['home'] = merged_df['home'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+merged_df['away'] = merged_df['away'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+
 # Initialize the server
 server = Flask(__name__)
 server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
@@ -36,24 +47,8 @@ app.layout = html.Div([
     html.Div(id='page-content'),
     html.H1('NHL Predicted Events'),
 
-    html.H3('Select Date(s):'),
-    dcc.Dropdown(
-        id='date-dropdown',
-        options=[{'label': i, 'value': i} for i in predicted_events_df['date'].unique()],
-        multi=True,
-        value=[predicted_events_df['date'].min()]
-    ),
-
-    html.H3('Select Game(s):'),
-    dcc.Dropdown(
-        id='game-dropdown',
-        options=[{'label': i, 'value': i} for i in predicted_events_df['Game_ID'].unique()],
-        multi=True
-    ),
-
     html.Div(id='table-container')
 ])
-
 
 def login_required(f):
     @wraps(f)
@@ -64,7 +59,6 @@ def login_required(f):
         return render_template('login.html')
 
     return decorated_function
-
 
 @server.route('/google/')
 def google():
@@ -87,41 +81,18 @@ def google():
     redirect_uri = url_for('google_auth', _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
-
 @server.route('/google/auth/')
 def google_auth():
     token = oauth.google.authorize_access_token()
     session['user'] = token['userinfo']
     return redirect('/')
 
-
 @server.route('/')
 @login_required
 def default_path():
     return redirect("/dash/", code=302)
 
-
 @server.route('/logout')
 def logout():
     session.pop('user', None)
-    return redirect('/')
-
-
-# Callback to update table
-@app.callback(
-    Output('table-container', 'children'),
-    [Input('date-dropdown', 'value'),
-     Input('game-dropdown', 'value')]
-)
-def update_table(date_filter, game_filter):
-    filtered_df = predicted_events_df
-
-    if date_filter:
-        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
-
-    if game_filter:
-        filtered_df
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
-
+    return
