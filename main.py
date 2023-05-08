@@ -1,63 +1,87 @@
-import dash
-import boto3
 import os
-from flask import Flask, redirect, url_for, session, render_template
-from functools import wraps
-import plotly.express as px
-from dash import dcc, html
-from dash.dependencies import Input, Output
-from authlib.integrations.flask_client import OAuth
 import pandas as pd
-import requests
-
-# Load Iris dataset
-df = px.data.iris()
+import boto3
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
 
 # Connect to DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
-schedulesTable = dynamodb.Table('nhl-schedules')
+prediction_table = dynamodb.Table('predicted_events')
+teams_table = dynamodb.Table('nhl_teams')
 
-# Initialize the server
-server = Flask(__name__)
-server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
-# server.config['SERVER_NAME'] = 'localhost:8050'
+predict_response = prediction_table.scan()
+predict_items = predict_response['Items']
 
-oauth = OAuth(server)
-app = dash.Dash(__name__, server=server, url_base_pathname='/dash/')
+teams_response = teams_table.scan()
+teams_items = teams_response['Items']
+
+predicted_events_df = pd.DataFrame(predict_items)
+nhl_teams_df = pd.DataFrame(teams_items)
+
+# Initialize the app
+app = dash.Dash(__name__)
 
 # Define the layout of the app
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),  # this locates this structure to the url
-    html.Div(id='page-content'),
-    html.H1('NHL Schedules'),
-    html.Ul(id='schedule-list'),
-    html.H1('Iris Dataset'),
-    dcc.Graph(
-        id='scatter-plot',
-        figure={
-            'data': [
-                {'x': df[df['species'] == 'setosa']['sepal_width'], 'y': df[df['species'] == 'setosa']['sepal_length'],
-                 'type': 'scatter', 'mode': 'markers', 'name': 'Setosa'},
-                {'x': df[df['species'] == 'versicolor']['sepal_width'],
-                 'y': df[df['species'] == 'versicolor']['sepal_length'], 'type': 'scatter', 'mode': 'markers',
-                 'name': 'Versicolor'},
-                {'x': df[df['species'] == 'virginica']['sepal_width'],
-                 'y': df[df['species'] == 'virginica']['sepal_length'], 'type': 'scatter', 'mode': 'markers',
-                 'name': 'Virginica'}
-            ],
-            'layout': {
-                'title': 'NHL stuff continuously deployed',
-                'xaxis': {'title': 'Sepal Width'},
-                'yaxis': {'title': 'Sepal Length'}
-            }
-        }
+    html.H1('NHL Predicted Events'),
+
+    html.H3('Select Date(s):'),
+    dcc.Dropdown(
+        id='date-dropdown',
+        options=[{'label': i, 'value': i} for i in predicted_events_df['date'].unique()],
+        multi=True,
+        value=[predicted_events_df['date'].min()]
     ),
-    dcc.Interval(
-        id='interval-component',
-        interval=1 * 1000,  # in milliseconds
-        n_intervals=0
-    )
+
+    html.H3('Select Game(s):'),
+    dcc.Dropdown(
+        id='game-dropdown',
+        options=[{'label': i, 'value': i} for i in predicted_events_df['Game_ID'].unique()],
+        multi=True
+    ),
+
+    html.Div(id='table-container')
 ])
+
+# Callback to update table
+@app.callback(
+    Output('table-container', 'children'),
+    [Input('date-dropdown', 'value'),
+     Input('game-dropdown', 'value')]
+)
+def update_table(date_filter, game_filter):
+    filtered_df = predicted_events_df
+
+    if date_filter:
+        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
+
+    if game_filter:
+        filtered_df = filtered_df[filtered_df['Game_ID'].isin(game_filter)]
+
+    filtered_df = filtered_df.sort_values(by='eventIdx', ascending=False)
+
+    filtered_df['away'] = filtered_df['away'].apply(
+        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
+            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
+    filtered_df['home'] = filtered_df['home'].apply(
+        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
+            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
+
+    # Select only the desired columns
+    filtered_df = filtered_df[['home_goals', 'away_goals', 'home', 'away', 'description']]
+
+    return html.Table([
+        html.Thead([
+            html.Tr([html.Th(col) for col in filtered_df.columns])
+        ]),
+        html.Tbody([
+            html.Tr([
+                html.Td(filtered_df.iloc[i][col]) for col in filtered_df.columns
+            ]) for i in range(len(filtered_df))
+        ])
+    ])
 
 
 def login_required(f):
@@ -117,24 +141,6 @@ def logout():
     session.pop('user', None)
     return redirect('/')
 
-# Define app callback
-@app.callback(Output('schedule-list', 'children'),
-              Input('interval-component', 'n_intervals'))
-def update_schedule(n):
-    global schedulesTable
-
-    # Retrieve all items from DynamoDB table
-    response = schedulesTable.scan()
-    items = response.get('Items')
-
-    # Create list of items
-    schedule_list = [
-        html.Li(f"{item['home_team']} vs {item['away_team']} on {item['date']}")
-        for item in items
-    ]
-
-    return schedule_list
-
 
 @app.callback(Output('page-content', 'children'), #this changes the content
               [Input('url', 'pathname')]) #this listens for the url in use
@@ -144,4 +150,5 @@ def display_dash(pathname):
         return (dcc.Location(id="redirect", pathname="/"))
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', debug=True)
+    app.run_server(debug=True)
+
