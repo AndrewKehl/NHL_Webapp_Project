@@ -1,10 +1,13 @@
 import os
 import pandas as pd
 import boto3
+from functools import wraps
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+from authlib.integrations.flask_client import OAuth
+from flask import Flask, redirect, url_for, session, render_template
 
 # Connect to DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
@@ -20,11 +23,17 @@ teams_items = teams_response['Items']
 predicted_events_df = pd.DataFrame(predict_items)
 nhl_teams_df = pd.DataFrame(teams_items)
 
-# Initialize the app
-app = dash.Dash(__name__)
+# Initialize the server
+server = Flask(__name__)
+server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
+
+oauth = OAuth(server)
+app = dash.Dash(__name__, server=server, url_base_pathname='/dash/')
 
 # Define the layout of the app
 app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content'),
     html.H1('NHL Predicted Events'),
 
     html.H3('Select Date(s):'),
@@ -45,44 +54,6 @@ app.layout = html.Div([
     html.Div(id='table-container')
 ])
 
-# Callback to update table
-@app.callback(
-    Output('table-container', 'children'),
-    [Input('date-dropdown', 'value'),
-     Input('game-dropdown', 'value')]
-)
-def update_table(date_filter, game_filter):
-    filtered_df = predicted_events_df
-
-    if date_filter:
-        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
-
-    if game_filter:
-        filtered_df = filtered_df[filtered_df['Game_ID'].isin(game_filter)]
-
-    filtered_df = filtered_df.sort_values(by='eventIdx', ascending=False)
-
-    filtered_df['away'] = filtered_df['away'].apply(
-        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
-            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
-    filtered_df['home'] = filtered_df['home'].apply(
-        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
-            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
-
-    # Select only the desired columns
-    filtered_df = filtered_df[['home_goals', 'away_goals', 'home', 'away', 'description']]
-
-    return html.Table([
-        html.Thead([
-            html.Tr([html.Th(col) for col in filtered_df.columns])
-        ]),
-        html.Tbody([
-            html.Tr([
-                html.Td(filtered_df.iloc[i][col]) for col in filtered_df.columns
-            ]) for i in range(len(filtered_df))
-        ])
-    ])
-
 
 def login_required(f):
     @wraps(f)
@@ -94,12 +65,10 @@ def login_required(f):
 
     return decorated_function
 
+
 @server.route('/google/')
 def google():
     # Google Oauth Config
-    # Get client_id and client_secret from environment variables
-    # For developement purpose you can directly put it
-    # here inside double quotes
     GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 
@@ -132,22 +101,26 @@ def default_path():
     return redirect("/dash/", code=302)
 
 
-@server.route('/quack')
-def quack():
-    return 'hello'
-
 @server.route('/logout')
 def logout():
     session.pop('user', None)
     return redirect('/')
 
 
-@app.callback(Output('page-content', 'children'), #this changes the content
-              [Input('url', 'pathname')]) #this listens for the url in use
-def display_dash(pathname):
-    user = dict(session).get('user', None)
-    if user is None:
-        return (dcc.Location(id="redirect", pathname="/"))
+# Callback to update table
+@app.callback(
+    Output('table-container', 'children'),
+    [Input('date-dropdown', 'value'),
+     Input('game-dropdown', 'value')]
+)
+def update_table(date_filter, game_filter):
+    filtered_df = predicted_events_df
+
+    if date_filter:
+        filtered_df = filtered_df[filtered_df['date'].isin(date_filter)]
+
+    if game_filter:
+        filtered_df
 
 if __name__ == '__main__':
     app.run_server(debug=True)
