@@ -1,13 +1,10 @@
 import os
-from functools import wraps
+import pandas as pd
 import boto3
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import pandas as pd
-from authlib.integrations.flask_client import OAuth
 from dash.dependencies import Input, Output
-from flask import Flask, redirect, url_for, session, render_template
 
 # Connect to DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
@@ -20,42 +17,34 @@ predict_items = predict_response['Items']
 teams_response = teams_table.scan()
 teams_items = teams_response['Items']
 
-# Convert data to pandas DataFrames
-nhl_teams_df = pd.DataFrame(teams_items)
 predicted_events_df = pd.DataFrame(predict_items)
+nhl_teams_df = pd.DataFrame(teams_items)
 
-# Initialize the server
-server = Flask(__name__)
-server.secret_key = os.environ.get('SERVER_SECRET_KEY', 'secret-key')
-
-oauth = OAuth(server)
-app = dash.Dash(__name__, server=server, url_base_pathname='/dash/')
+# Initialize the app
+app = dash.Dash(__name__)
 
 # Define the layout of the app
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content'),
-    html.H1('NHL Schedules'),
-    html.Div([
-        html.Label('Sort by date:'),
-        dcc.Dropdown(
-            id='date-dropdown',
-            options=[{'label': date, 'value': date} for date in predicted_events_df['date'].unique()],
-            multi=True
-        ),
-        html.Label('Sort by game:'),
-        dcc.Dropdown(
-            id='game-dropdown',
-            options=[{'label': game_id, 'value': game_id} for game_id in predicted_events_df['Game_ID'].unique()],
-            multi=True
-        ),
-        html.Br(),
-        html.Div(id='table-container')
-    ]),
+    html.H1('NHL Predicted Events'),
+
+    html.H3('Select Date(s):'),
+    dcc.Dropdown(
+        id='date-dropdown',
+        options=[{'label': i, 'value': i} for i in predicted_events_df['date'].unique()],
+        multi=True,
+        value=[predicted_events_df['date'].min()]
+    ),
+
+    html.H3('Select Game(s):'),
+    dcc.Dropdown(
+        id='game-dropdown',
+        options=[{'label': i, 'value': i} for i in predicted_events_df['Game_ID'].unique()],
+        multi=True
+    ),
+
+    html.Div(id='table-container')
 ])
 
-
-# Callback to update table
 # Callback to update table
 @app.callback(
     Output('table-container', 'children'),
@@ -73,8 +62,12 @@ def update_table(date_filter, game_filter):
 
     filtered_df = filtered_df.sort_values(by='eventIdx', ascending=False)
 
-    filtered_df['away'] = filtered_df['away'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
-    filtered_df['home'] = filtered_df['home'].apply(lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0])
+    filtered_df['away'] = filtered_df['away'].apply(
+        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
+            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
+    filtered_df['home'] = filtered_df['home'].apply(
+        lambda x: nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation'].values[0] if len(
+            nhl_teams_df.loc[nhl_teams_df['Team_ID'] == x, 'abbreviation']) > 0 else x)
 
     # Select only the desired columns
     filtered_df = filtered_df[['home_goals', 'away_goals', 'home', 'away', 'description']]
@@ -89,9 +82,6 @@ def update_table(date_filter, game_filter):
             ]) for i in range(len(filtered_df))
         ])
     ])
-
-
-
 
 
 def login_required(f):
@@ -151,24 +141,6 @@ def logout():
     session.pop('user', None)
     return redirect('/')
 
-# Define app callback
-@app.callback(Output('predicted_events', 'children'),
-              Input('interval-component', 'n_intervals'))
-def update_schedule(n):
-    global predicted_events
-
-    # Retrieve all items from DynamoDB table
-    response = predicted_events.scan()
-    items = response.get('Items')
-
-    # Create list of items
-    schedule_list = [
-        html.Li(f"{item['home']} vs {item['away']} on {item['date']}")
-        for item in items
-    ]
-
-    return schedule_list
-
 
 @app.callback(Output('page-content', 'children'), #this changes the content
               [Input('url', 'pathname')]) #this listens for the url in use
@@ -178,6 +150,5 @@ def display_dash(pathname):
         return (dcc.Location(id="redirect", pathname="/"))
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', debug=True)
-
+    app.run_server(debug=True)
 
