@@ -17,8 +17,11 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
 prediction_table = dynamodb.Table('predicted_events')
 teams_table = dynamodb.Table('nhl_teams')
 
+predict_response = prediction_table.scan()
+predict_items = predict_response['Items']
 
-
+teams_response = teams_table.scan()
+teams_items = teams_response['Items']
 
 
 
@@ -127,7 +130,7 @@ def logout():
     return redirect('/')
 
 # Define app callback
-@app.callback(Output('schedule-list', 'children'),
+@app.callback(Output('predicted_events', 'children'),
               Input('interval-component', 'n_intervals'))
 def update_schedule(n):
     global schedulesTable
@@ -138,7 +141,7 @@ def update_schedule(n):
 
     # Create list of items
     schedule_list = [
-        html.Li(f"{item['home_team']} vs {item['away_team']} on {item['date']}")
+        html.Li(f"{item['home']} vs {item['away']} on {item['date']}")
         for item in items
     ]
 

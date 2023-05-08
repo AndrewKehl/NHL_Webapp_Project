@@ -77,3 +77,4 @@ def lambda_handler(event, context):
 
     # Print a confirmation message
     print(f"Inserted {len(extended_items)} items into the 'nhl_events' table.")
+
