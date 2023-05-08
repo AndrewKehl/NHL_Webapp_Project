@@ -56,6 +56,7 @@ app.layout = html.Div([
 
 
 # Callback to update table
+# Callback to update table
 @app.callback(
     Output('table-container', 'children'),
     [Input('date-dropdown', 'value'),
@@ -89,7 +90,8 @@ def update_table(date_filter, game_filter):
         ])
     ])
 
-# Rest of the code remains the same...
+
+
 
 
 def login_required(f):
