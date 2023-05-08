@@ -8,12 +8,20 @@ import sklearn
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 import sklearn
+from decimal import Decimal
+
+
+os.environ['AWS_ACCESS_KEY_ID'] = ''
+os.environ['AWS_SECRET_ACCESS_KEY'] = ''
+
+
+
 
 
 default_start_date = datetime.now() - timedelta(days=1)
 default_end_date = datetime.now() + timedelta(days=7)
-dynamodb = boto3.resource('dynamodb')
-table_name = os.environ['DYNAMODB_TABLE_NAME']
+dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
+table_name = 'predicted_events'
 start_date = os.getenv('START_DATE', default_start_date.strftime('%Y-%m-%d'))
 end_date = os.getenv('END_DATE', default_end_date.strftime('%Y-%m-%d'))
 table = dynamodb.Table(table_name)
@@ -27,6 +35,20 @@ def time_string_to_minutes(time_string):
         seconds=0
 
     return minutes * 60 + seconds
+
+
+def float_to_decimal(data):
+    if isinstance(data, list):
+        return [float_to_decimal(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: float_to_decimal(value) for key, value in data.items()}
+    elif isinstance(data, float):
+        return Decimal(str(data))
+    elif isinstance(data, datetime):
+        return data.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        return data
+
 
 events_map_df = pd.DataFrame(
     columns=('season', 'penaltyMinutes', 'eventIdx', 'period', 'x', 'y', 'goals_away', 'goals_home',
@@ -111,8 +133,12 @@ for date in schedule_data["dates"]:
             games_df = games_df.rename(columns=new_columns)
             new_columns = {col: col.replace('.', '_') for col in games_df.columns}
             games_df = games_df.rename(columns=new_columns)
-            games_df = games_df.drop(
-                columns=['players', 'link', 'eventCode', 'event', 'eventId', 'periodType', 'ordinalNum', 'name'])
+            drop_columns=['players', 'link', 'eventCode', 'event', 'eventId', 'periodType', 'ordinalNum', 'name']
+            for that in drop_columns:
+                try:
+                    games_df = games_df.drop(columns=[that])
+                except:
+                    print()
 
             games_df['Home_Shots'] = 0
             games_df['Away_Shots'] = 0
@@ -265,6 +291,7 @@ special.drop(special.iloc[:, 32:98], axis=1,inplace=True)
 
 datas = special.to_dict(orient='records')
 for datum in datas:
+    datum=float_to_decimal(datum)
     table.put_item(Item=datum)
 
 print('done')
